@@ -13,12 +13,14 @@ Built for the Marketing Analytics course at Universidad Francisco de Vitoria.
 2. **Variables** — the price column, the price or its logarithm as target, the features. Numeric features are
    standardised and categorical ones one-hot encoded, fitted on the training cars only; levels with fewer than 10
    training cars are pooled as “other”.
-3. **Network** — presets (none / 16 / 64→32 / 128→64→32) or any stack of layers; the page counts the weights and
+3. **Network** — every setting has a one-line explanation under it, and a tuning guide reads the two curves
+   (underfitting, overfitting, learning rate too high or too low). Presets (none / 16 / 64→32 / 128→64→32) or any stack of layers; the page counts the weights and
    warns when there are more weights than cars.
 4. **Train** — TensorFlow.js on the CPU backend (a few seconds; identical numbers on every laptop). Live training and
    validation curves; early stopping restores the weights of the best validation epoch.
-5. **Results** — MAE, RMSE, MAPE and R² on the held-out cars; predicted-vs-actual for both models; permutation
-   importance of each original variable.
+5. **Results** — MAE, RMSE, MAPE and R² on the held-out cars for four models: the mean, a linear regression, **k-nearest
+   neighbours** (the “comparables” method; k chosen on training cars by leave-one-out) and the network;
+   predicted-vs-actual; permutation importance of each original variable.
 6. **Price my car** — the network's and the regression's price, a range taken from the test errors (the band that
    held 80 % of test cars), and the six most similar cars in the data.
 

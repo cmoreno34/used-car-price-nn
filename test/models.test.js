@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { fitLinear, metrics } from "../src/lib/models.js";
+import { fitLinear, metrics, fitKNN, tuneK } from "../src/lib/models.js";
 import { parseCSV, fitEncoder, encodeRow, clean, split, yToModel, yFromModel, toNum } from "../src/lib/data.js";
 
 const ref = JSON.parse(fs.readFileSync(new URL("./models_reference.json", import.meta.url)));
@@ -20,6 +20,19 @@ test("metrics match scikit-learn", () => {
   const m = metrics(ref.act, ref.prd);
   assert.ok(close(m.mae, ref.mae, 1e-9)); assert.ok(close(m.rmse, ref.rmse, 1e-9));
   assert.ok(close(m.r2, ref.r2, 1e-9)); assert.ok(close(m.mape, ref.mape, 1e-9));
+});
+
+test("KNN matches scikit-learn KNeighborsRegressor (uniform and distance weights)", () => {
+  for (const w of ["uniform", "distance"]) for (const k of [1, 5, 12]) {
+    const m = fitKNN(ref.X, ref.y, { k, weighted: w === "distance" });
+    ref.Xq.forEach((x, i) => assert.ok(close(m.predict(x), ref.knn[`${w}_${k}`][i], 1e-9), `${w} k=${k} row ${i}`));
+  }
+});
+
+test("tuneK prices each training car from the others and returns an error per k", () => {
+  const res = tuneK(ref.X, ref.y, { ks: [1, 5, 20], sample: 100, errFn: (a, p) => metrics(a.map(Math.exp), p.map(Math.exp)).mae });
+  assert.equal(res.length, 3);
+  assert.ok(res.every((r) => Number.isFinite(r.err) && r.err > 0));
 });
 
 test("Spanish number formats and CSV quoting", () => {
