@@ -1,0 +1,29 @@
+# Example source: two local pages that look like a listings site, so the whole
+# pipeline can be tried without touching anyone's server.
+#
+# To configure a real site, copy this file and change:
+#   start_url     the first page of results
+#   terms_url     the site's terms of use — READ THEM
+#   terms_checked true only if they allow automated collection
+#   item          CSS selector of one listing card
+#   fields        CSS selector (and optional attr / regex / type) for each column
+#   next_page     CSS selector of the "next page" link
+# Then run with --dry-run first. Do not use it on coches.net, milanuncios,
+# Wallapop or similar portals: their terms forbid it.
+name: Example dealer (local fixture)
+start_url: file:fixtures/listings_page1.html
+item: article.car
+next_page: a.next
+max_pages: 5
+delay_seconds: 3
+required: [price_eur, year, km]
+fields:
+  brand: .brand
+  model: .model
+  year: { selector: .year, type: number }
+  km: { selector: .km, type: number }
+  power_cv: { selector: .specs, regex: '(\d+)\s*CV', type: number }
+  fuel: .fuel
+  gearbox: .gearbox
+  province: .location
+  price_eur: { selector: .price, type: number }
