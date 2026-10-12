@@ -220,7 +220,7 @@ export default function App() {
               <Help>Cars kept aside and used only at the end, to measure every model on cars it never saw.</Help>
             </label>
             <label>Seed <input type="number" value={cfg.seed} onChange={(e) => set("seed", Number(e.target.value) || 1)} />
-              <Help>Fixes which cars are test cars and the network’s starting weights. The order in which cars are shuffled during training is still random, so the network’s error moves a little between runs — train twice before believing a small difference.</Help></label>
+              <Help>Fixes which cars are test cars and the network’s starting weights. The same seed also fixes the order the network sees the cars in, so the same settings give exactly the same network on every computer: a difference you see comes from the setting you changed, not from luck.</Help></label>
             <label>Rare categories <input type="number" min="1" value={cfg.minCount} onChange={(e) => set("minCount", Math.max(1, Number(e.target.value) || 1))} />
               <Help>A level seen in fewer training cars than this is pooled as “other”: a handful of cars cannot teach a weight.</Help></label>
           </div>
@@ -350,6 +350,13 @@ export default function App() {
               ))}
             </tbody>
           </table>
+          <details className="hint">
+            <summary>How to read these numbers</summary>
+            <p><strong>MAE</strong> (mean absolute error): how far off the price is on average, in {unit}, whether too high or too low. MAE {money(1500, unit)} means the model misses by {money(1500, unit)} on a typical car.</p>
+            <p><strong>RMSE</strong> (root mean squared error): also in {unit}, but errors are squared before averaging, so big misses weigh more. It is always at least the MAE; much larger than the MAE means a few cars are priced very badly.</p>
+            <p><strong>MAPE</strong> (mean absolute percentage error): the error as a % of each car's price, so a cheap and an expensive car count alike — 10% is {money(1000, unit)} on a {money(10000, unit)} car and {money(5000, unit)} on a {money(50000, unit)} one.</p>
+            <p><strong>R²</strong>: the share of the differences in price between cars that the model explains. 1 is perfect; 0 is no better than giving every car the average price (the first row); below 0 is worse than that.</p>
+          </details>
           <p className="hint">
             {result.mNN.mape < result.mLin.mape * 0.9
               ? `The network’s errors are ${pct(1 - result.mNN.mape / result.mLin.mape)} smaller than the linear regression’s: it found structure a straight line cannot draw.`

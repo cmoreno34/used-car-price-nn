@@ -10,6 +10,7 @@
  *   epochs, batchSize, valShare, patience (early stopping), seed
  */
 import * as tf from "@tensorflow/tfjs";
+import { mulberry32 } from "./data.js";
 
 export const ACTIVATIONS = ["relu", "elu", "tanh", "sigmoid", "linear"];
 export const OPTIMIZERS = ["adam", "sgd", "rmsprop"];
@@ -43,34 +44,43 @@ export function buildModel(nIn, cfg) {
 }
 
 /* Trains, reporting every epoch. Keeps the weights of the best validation epoch
- * (early stopping restores them), so an over-trained network does not win. */
+ * (early stopping restores them), so an over-trained network does not win.
+ *
+ * Reproducible: the validation cars and the order of the training cars in
+ * every epoch come from the seed (TF.js's own shuffle uses Math.random), so
+ * the same settings and seed give the same network on every computer — a
+ * class can compare numbers, and a change of setting is the only difference. */
 export async function train(model, X, y, cfg, { onEpoch, shouldStop } = {}) {
-  const xs = tf.tensor2d(X), ys = tf.tensor2d(y, [y.length, 1]);
+  const rng = mulberry32((cfg.seed ?? 1) * 7919 + 13);
+  const shuffle = (a) => { const b = [...a]; for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  const order = shuffle(X.map((_, i) => i));
+  const nVal = Math.round(X.length * cfg.valShare);
+  const valIdx = order.slice(0, nVal), trIdx = order.slice(nVal);
+  const xv = tf.tensor2d(valIdx.map((i) => X[i])), yv = tf.tensor2d(valIdx.map((i) => [y[i]]));
   let best = Infinity, bestWeights = null, wait = 0;
   const history = [];
-  await model.fit(xs, ys, {
-    epochs: cfg.epochs, batchSize: cfg.batchSize, validationSplit: cfg.valShare, shuffle: true, verbose: 0,
+  for (let epoch = 0; epoch < cfg.epochs; epoch++) {
+    const perm = shuffle(trIdx);
+    const xs = tf.tensor2d(perm.map((i) => X[i])), ys = tf.tensor2d(perm.map((i) => [y[i]]));
     // TF.js otherwise yields every few batches through requestAnimationFrame, which
     // stops in a background tab; we yield once per epoch instead (below).
-    yieldEvery: "never",
-    callbacks: {
-      onEpochEnd: async (epoch, logs) => {
-        history.push({ epoch: epoch + 1, loss: logs.loss, val: logs.val_loss });
-        if (logs.val_loss < best - 1e-5) {
-          best = logs.val_loss; wait = 0;
-          bestWeights?.forEach((t) => t.dispose());
-          bestWeights = model.getWeights().map((w) => w.clone());
-        } else wait++;
-        onEpoch?.(history);
-        if ((cfg.patience > 0 && wait >= cfg.patience) || shouldStop?.()) model.stopTraining = true;
-        // Yield to the page so the charts redraw. setTimeout, not requestAnimationFrame:
-        // rAF stops in a background tab and training would freeze with it.
-        await new Promise((r) => setTimeout(r, 0));
-      },
-    },
-  });
+    const h = await model.fit(xs, ys, { epochs: 1, batchSize: cfg.batchSize, shuffle: false, validationData: [xv, yv], verbose: 0, yieldEvery: "never" });
+    xs.dispose(); ys.dispose();
+    const loss = h.history.loss[0], val = h.history.val_loss[0];
+    history.push({ epoch: epoch + 1, loss, val });
+    if (val < best - 1e-5) {
+      best = val; wait = 0;
+      bestWeights?.forEach((t) => t.dispose());
+      bestWeights = model.getWeights().map((w) => w.clone());
+    } else wait++;
+    onEpoch?.(history);
+    if ((cfg.patience > 0 && wait >= cfg.patience) || shouldStop?.()) break;
+    // Yield to the page so the charts redraw. setTimeout, not requestAnimationFrame:
+    // rAF stops in a background tab and training would freeze with it.
+    await new Promise((r) => setTimeout(r, 0));
+  }
   if (bestWeights) { model.setWeights(bestWeights); bestWeights.forEach((t) => t.dispose()); }
-  xs.dispose(); ys.dispose();
+  xv.dispose(); yv.dispose();
   return { history, bestVal: best, stoppedAt: history.length };
 }
 
