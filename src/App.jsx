@@ -220,7 +220,14 @@ export default function App() {
               <Help>Cars kept aside and used only at the end, to measure every model on cars it never saw.</Help>
             </label>
             <label>Seed <input type="number" value={cfg.seed} onChange={(e) => set("seed", Number(e.target.value) || 1)} />
-              <Help>Fixes which cars are test cars and the network’s starting weights. The same seed also fixes the order the network sees the cars in, so the same settings give exactly the same network on every computer: a difference you see comes from the setting you changed, not from luck.</Help></label>
+              <Help>
+                <strong>What it is:</strong> a computer cannot roll real dice — it makes “random” numbers with a formula that starts from this number.
+                Same seed → the same “random” choices → exactly the same result, on any computer; another seed → other choices → a slightly different result.
+                Here it decides everything random: which 1,200 cars are kept aside for the test, the network’s starting weights, the order it sees the cars
+                in each epoch, and which units dropout switches off.
+                <strong> How to use it:</strong> keep the seed and change one setting — the difference is that setting. Keep the settings and change the
+                seed — the difference is pure luck; if the results move a lot, do not trust small differences between models.
+              </Help></label>
             <label>Rare categories <input type="number" min="1" value={cfg.minCount} onChange={(e) => set("minCount", Math.max(1, Number(e.target.value) || 1))} />
               <Help>A level seen in fewer training cars than this is pooled as “other”: a handful of cars cannot teach a weight.</Help></label>
           </div>
